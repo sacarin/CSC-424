@@ -1,0 +1,103 @@
+#!/bin/sh
+
+# initdb
+# Dep: postgresql
+# DO NOT USE IN PRODUCTION
+
+__USAGE="\
+Usage: $(basename $0) <operation>
+
+PostgreSQL debug database utility.
+
+Operations:
+-h, --help: Display help.
+-i, --init: Create the database.
+-s, --start: Start the database
+-x, --stop: Stop the database
+-c, --clean: Removes the database
+"
+
+# env variables
+export PGDATA=".db"
+export PGDATABASE="ecocosts"
+
+init() {
+	# db exist?
+	if [ -d ".db" ]; then
+		echo "already exists"
+		exit 1
+	fi
+
+	# create db dir at pwd
+	initdb --locale "en_US.UTF-8"
+
+	# check /run/postgresql
+	lock
+
+	# start db
+	start
+
+	# create db
+	createdb
+
+	# create initial schema
+	psql -a -f "schema.sql"
+	
+	# insert data and permissions
+	psql -a -f "data.sql"
+
+	# stop db
+	stop
+}
+
+lock() {
+	if [ -d "/run/postgresql" ]; then
+		return
+	fi
+	# BEWARE
+	su -c "mkdir -m777 /run/postgresql"
+}
+
+is_running() {
+	if [ -e ".db/postmaster.pid" ]; then
+		return 0
+	fi
+	return 1
+}
+
+start() {
+	if is_running; then
+		echo "running"
+	fi
+	pg_ctl -l ".dblog" start
+}
+
+stop() {
+	if is_running; then
+		pg_ctl -l ".dblog" stop
+	fi
+	echo "not running"
+}
+
+case $1 in
+	-h|--help)
+		printf "%s" "$__USAGE"
+		;;
+	-i|--init)
+		init
+		;;
+	-s|--start)
+		start
+		;;
+	-x|--stop)
+		stop
+		;;
+	-c|--clean)
+		stop
+		rm -Ir .db/
+		;;
+	*)
+		printf "%s" "$__USAGE"
+		exit 1
+		;;
+esac

@@ -1,0 +1,14 @@
+<html>
+{{template "head"}}
+<body>
+{{template "nav" .Client.Name }}
+<main>
+  <h1>Are your sure?</h1>
+  <p>WARNING: You are removing stonk, {{ .Symbol }}.</p>
+  <form method="post">
+    <input type="submit" value="Submit">
+  </form>
+</main>
+{{template "footer"}}
+</body>
+</html>
